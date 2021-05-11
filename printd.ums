@@ -1,0 +1,79 @@
+//
+//
+//                     printd.ums
+//
+//     Assignment : asmcoding
+//     Authors    : Anesu Gavhera (agavhe01)
+//     Date       : April 29 2021
+//
+//     Purpose    : contains a function to for printing um words in decimal form
+//
+//
+//
+//
+
+.section init
+    .temps r6, r7
+    .zero r0
+
+.section text
+    #########################################################################
+    #               print_decimal_representation_of_a_number                #
+    #########################################################################
+    printd:
+        push r1 on stack r2             // save return address
+        push r4 on stack r2             // save nonvolatile register
+        r3 := m[r0][r2 + 2]             // first parameter
+
+        r5 := 0x80000000
+        if (r3 == 0) goto print_zero
+        if (r3 == r5) goto print_big using r5
+        if (r3 <s r0) goto print_neg using r4
+        goto printd2
+
+    #########################################################################
+    #               print_negative_sign_for_negative_numbers                #
+    #########################################################################
+    print_neg:
+        output '-'
+        r3 := -r3
+
+    printd2:
+        r4 := r3
+        r5 := r4 / 10           // store number to print in a temp location
+        if (r5 == 0) goto base_case
+        push r5 on stack r2     // now n/10 is a parameter
+        goto printd linking r1
+        pop stack r2
+        r5 := r4 mod 10
+        output r5 + '0'
+        goto finish_print
+
+    #########################################################################
+    #               special_case_for_most_negative_number                   #
+    #########################################################################
+    print_big:
+        output "-2147483648"
+        goto finish_print
+
+    #########################################################################
+    #               special_case_for_value_of_zero                          #
+    #########################################################################
+    print_zero:
+        output "0"
+        goto finish_print
+
+    #########################################################################
+    #               print_value_in_base_case                                #
+    #########################################################################
+    base_case:
+        r5 := r4 mod 10
+        output r5 + '0'
+
+    #########################################################################
+    #               restore_registers_and_return                            #
+    #########################################################################
+    finish_print:
+        pop r4 off stack r2             // restore saved register
+        pop r5 off stack r2             // put return address in r5
+        goto r5

@@ -1,0 +1,306 @@
+//
+//
+//                     calc40.ums
+//
+//     Assignment: asmcoding
+//     Author    : Anesu Gavhera (agavhe01)
+//     Date      : April 29 2021
+//
+//     Purpose   : contains all calculator-related data structures and functions
+//
+//
+//
+//
+
+.section init
+    .temps r6, r7
+    .zero r0
+
+.section data
+    .space 100000
+    valstack:
+
+.section rodata
+    jumptable:
+    .space 256
+
+.section init
+    r4 := valstack
+    r3 := 0
+
+    ##########################################################################
+    #           initialize_every_value_in_jumptable_to_input_error           #
+    ##########################################################################
+    initialize_jumptable:
+        r5 := jumptable + r3
+        m[r0][r5] := input_error
+        r3 := r3 + 1
+        if(r3 != 256) goto initialize_jumptable using r1
+
+    ##########################################################################
+    #           set_all_chars_to_appropriate_labels_in_jumptable            #
+    ##########################################################################
+    set_ops:
+        m[r0][jumptable + '0'] := digit
+        m[r0][jumptable + '1'] := digit
+        m[r0][jumptable + '2'] := digit
+        m[r0][jumptable + '3'] := digit
+        m[r0][jumptable + '4'] := digit
+        m[r0][jumptable + '5'] := digit
+        m[r0][jumptable + '6'] := digit
+        m[r0][jumptable + '7'] := digit
+        m[r0][jumptable + '8'] := digit
+        m[r0][jumptable + '9'] := digit
+        m[r0][jumptable + ' '] := waiting
+        m[r0][jumptable + '\n'] := print_val
+        m[r0][jumptable + '+'] := add
+        m[r0][jumptable + '-'] := sub
+        m[r0][jumptable + '*'] := mul
+        m[r0][jumptable + '/'] := div
+        m[r0][jumptable + '&'] := and
+        m[r0][jumptable + '|'] := or
+        m[r0][jumptable + 's'] := swap
+        m[r0][jumptable + 'c'] := change
+        m[r0][jumptable + 'p'] := remove
+        m[r0][jumptable + 'd'] := dup
+        m[r0][jumptable + '~'] := flip
+        m[r0][jumptable + 'z'] := clear
+
+.section text
+    main:
+        push r1 on stack r2 // Address main returns to
+        push r4 on stack r2 // Callee (main) saves non-volatile reg
+        goto waiting
+
+    digit:
+        r1 := r1 - 48                          // convert from ASCII to digit
+        push r1 on stack r4
+
+    ##########################################################################
+    #               ENTERING MODE                                            #
+    ##########################################################################
+    entering:
+        r1 := input()
+        if(r1 == -1) goto end_main using r3    // -1 is eof
+        r5 := jumptable + r1
+        r5 := m[r0][r5]
+        if(r5 != digit) goto r5 using r3      // goto all labels except digit
+        r1 := r1 - 48                          // convert from ASCII to digit
+        pop r3 off stack r4                    // pop previous value from stack
+        r3 := r3 * 10
+        r3 := r3 + r1                          // add current digit
+        push r3 on stack r4
+        goto entering
+
+    ##########################################################################
+    #               newline '\n' -> PRINTING THE STACK                       #
+    ##########################################################################
+    print_val:
+        if(r4 == valstack) goto waiting using r3
+        r5 := r4
+
+    print_recursive:                             // Recursive Helper function
+        r3 := m[r0][r5]                          // obtain element
+        r5 := r5 + 1
+        push r5 on stack r2              // save r5 value
+        push r3 on stack r2          // digit to print is function parameter
+        output ">>> "
+        goto printd linking r1
+        output '\n'
+        pop stack r2
+        pop r5 off stack r2
+        if(r5 == valstack) goto waiting using r3 // if end of stack, quit ...
+        goto print_recursive                     // ... else recurse
+
+    #########################################################################
+    #               addition '+'                                            #
+    #########################################################################
+    add:
+        if(r4 >s valstack - 2) goto underflow2 using r3
+        pop r3 off stack r4
+        pop r5 off stack r4
+        r5 := r5 + r3
+        push r5 on stack r4            // push sum of top 2 values on stack
+        goto waiting
+
+    #########################################################################
+    #               subtraction '+'                                         #
+    #########################################################################
+    sub:
+        if(r4 >s valstack - 2) goto underflow2 using r3
+        pop r3 off stack r4
+        pop r5 off stack r4
+        r5 := r5 - r3
+        push r5 on stack r4       // push difference of top 2 values on stack
+        goto waiting
+
+    ##########################################################################
+    #               multiplication '*'                                       #
+    ##########################################################################
+    mul:
+        if(r4 >s valstack - 2) goto underflow2 using r3
+        pop r3 off stack r4
+        pop r5 off stack r4
+        r5 := r5 * r3
+        push r5 on stack r4          // push product of top 2 values on stack
+        goto waiting
+
+    ##########################################################################
+    #               division '/'                                             #
+    ##########################################################################
+    div:
+        if(r4 >s valstack - 2) goto underflow2 using r3
+        pop r3 off stack r4                          // y value
+        pop r5 off stack r4                          // x value
+        if (r3 == 0) goto division_zero
+        if (r5 <s 0) goto neg_x using r1
+        if (r3 <s 0) goto pos_x_neg_y using r1
+        r5 := r5 / r3                          // x and y both positive
+        push r5 on stack r4
+        goto waiting
+
+    neg_x:                                     // x param is negative
+        if (r3 >s 0) goto neg_x_pos_y using r1
+        r5 := -r5                              // x and y both negative
+        r3 := -r3                              // flip y sign
+        r3 := r5 / r3                          // compute x div y
+        push r3 on stack r4
+        goto end_div
+
+    neg_x_pos_y:                               // x is negative, y is positive
+        r5 := -r5                              // change x to pos
+        r3 := r5 / r3                          // compute x div y
+        r3 := -r3                              // negate the result
+        push r3 on stack r4
+        goto end_div
+
+    pos_x_neg_y:                               // x is positive, y negative
+        r3 := -r3                              // flip y sign
+        r3 := r5 / r3                          // compute x div y
+        r3 := -r3                              // negate the result
+        push r3 on stack r4
+
+    end_div:
+        goto waiting
+
+    ##########################################################################
+    #               bitwise_or '|'                                           #
+    ##########################################################################
+    or:
+        if(r4 >s valstack - 2) goto underflow2 using r3
+        pop r3 off stack r4
+        pop r5 off stack r4
+        r5 := r5 | r3
+        push r5 on stack r4            // push bitwise or of top two values
+        goto waiting
+
+    ##########################################################################
+    #               bitwise_and '&'                                          #
+    ##########################################################################
+    and:
+        if(r4 >s valstack - 2) goto underflow2 using r3
+        pop r3 off stack r4
+        pop r5 off stack r4
+        r5 := r5 & r3
+        push r5 on stack r4             // push bitwise and of top two values
+        goto waiting
+
+    ##########################################################################
+    #               sign_change 'c'                                          #
+    ##########################################################################
+    change:
+        if(r4 >s valstack - 1) goto underflow using r3
+        pop r3 off stack r4
+        r3 := -r3
+        push r3 on stack r4           // push flipped value
+        goto waiting
+
+    ##########################################################################
+    #               bitwise_complement '~'                                   #
+    ##########################################################################
+    flip:
+        if(r4 >s valstack - 1) goto underflow using r3
+        pop r3 off stack r4
+        r3 := ~r3
+        push r3 on stack r4                       // push bitwise complement
+        goto waiting
+
+    ##########################################################################
+    #               swap_2_stack_values 's'                                  #
+    ##########################################################################
+    swap:
+        if(r4 >s valstack - 2) goto underflow2 using r3
+        pop r3 off stack r4
+        pop r5 off stack r4
+        push r3 on stack r4                   // push values out of order
+        push r5 on stack r4
+        goto waiting
+
+    ##########################################################################
+    #               duplicate_top_stack 'd'                                  #
+    ##########################################################################
+    dup:
+        if(r4 >s valstack - 1) goto underflow using r3
+        pop r3 off stack r4
+        push r3 on stack r4
+        push r3 on stack r4                       // push second copy
+        goto waiting
+
+    ##########################################################################
+    #               remove_top_stack_value 'p'                               #
+    ##########################################################################
+    remove:
+        if(r4 >s valstack - 1) goto underflow using r3
+        pop stack r4                             // remove and discard
+        goto waiting
+
+    ##########################################################################
+    #                remove_all_stack_values 'z'                             #
+    ##########################################################################
+    clear:
+        if(r4 == valstack) goto waiting using r3   // recurse until stack empty
+        pop stack r4
+        goto clear
+
+    ##########################################################################
+    #               ERROR CODES AND HANDLING                                 #
+    ##########################################################################
+    underflow:
+        output "Stack underflow---expected at least 1 element\n"
+        goto waiting
+
+    underflow2:
+        output "Stack underflow---expected at least 2 elements\n"
+        goto waiting
+
+    division_zero:
+        output "Division by zero\n"
+        push r5 on stack r4             // restore values popped off
+        push r3 on stack r4
+        goto waiting
+
+    input_error:
+        output "Unknown character "
+        output "'"
+        output r1                                // r1 holds character input
+        output "'\n"
+
+    ##########################################################################
+    #                WAITING MODE                                            #
+    ##########################################################################
+    waiting:
+        r1 := input()
+
+    waiting_with_character:
+        if (r1 == -1) goto end_main using r3
+        r5 := jumptable + r1                          // use the jumptable
+        r5 := m[r0][r5]
+        goto r5
+
+    ##########################################################################
+    #                END MAIN                                                #
+    ##########################################################################
+    end_main:
+        pop r4 off stack r2                 // restore nonvolatile register
+        pop r5 off stack r2                 // get return address
+        goto r5

@@ -1,0 +1,19 @@
+//
+//
+//                     callmain.ums
+//
+//     Assignment : asmcoding
+//     Authors    : Anesu Gavhera (agavhe01)
+//     Date       : April 29 2021
+//
+//     Purpose    : calls main then halts
+//
+//
+//
+//
+
+.section init
+    .temps r6, r7
+    .zero r0
+    goto main linking r1
+    halt

@@ -1,0 +1,27 @@
+Anesu Gavhera (agavhe01)
+
+
+The print module was implemented by recursively printing the n - 1 most significant digits in
+decimal and then printing the least significant digit for an n digit number.
+
+The RPN calculator’s value stack is a stack with space allocated for 100000 elements where the
+end of the stack is indicated by the label valstack, which is stored in r4.
+
+Files :
+1. printd.ums -> Printing assembly words in decimal form
+      .section init - set registers r6, r7 as temp and r0 as zero
+      .section text - recursively prints the words.
+2. urt0.ums -> Initialize the call stack
+      .section init - set r0 equal to zero and then put endstack label in r2
+      .section data - initialize space for call stack and make endstack label
+3. callmain/ums -> Call the main label in calc40.ums
+      .section init - set temp registers, goto main in calc40.ums and then halt
+4. calc40.ums -> Contains all rpn calculator related data structures and functions
+      .section init - set r6, r7 as temp registers and r0 as zero and sets values
+                    of jumptable
+      .section data - initialize space for the value stack and place valstack
+                   label at the end of the stack
+      .section rodata - initialize space for a jump table and make jumptable
+                   label at the beginning of the allocated space
+      .section text - contains the main for the calc. Pushes return address onto
+                  Call stack and proceeds to waiting mode
